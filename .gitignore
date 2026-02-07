@@ -1,0 +1,6 @@
+node_modules
+.env
+.DS_Store
+apps/frontend/dist
+apps/frontend/.vite
+apps/backend/dist
