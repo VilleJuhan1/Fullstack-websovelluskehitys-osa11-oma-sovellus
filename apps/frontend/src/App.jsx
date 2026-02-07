@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import GameHeader from "./components/GameHeader.jsx";
 import FlagCard from "./components/FlagCard.jsx";
 import { buildChoices } from "./lib/game.js";
-import "./index.css";
 
 export default function App() {
   const [countries, setCountries] = useState([]);

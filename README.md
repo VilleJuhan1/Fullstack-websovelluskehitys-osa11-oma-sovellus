@@ -3,7 +3,7 @@
 Monorepo with a React (Vite) frontend and a Node.js (Express) backend. The UI
 shows a flag and four options to guess the country.
 
-*This app is almost entirely coded with OpenAI Codex!* This is mainly because at the time, it was a brand new tool and I wanted to see how it works, if it works. The app is a very distant fork from the earlier parts of the course where we built a react app for searching information from various countries. The backend of this app uses the same API as that course app.
+**The app is almost entirely coded with OpenAI Codex!** This is mainly because at the time, it was a brand new tool and I wanted to see how it works, if it works. The app is a very distant fork from the earlier parts of the course where we built a react app for searching information from various countries. The backend of this app uses the same API as that course app.
 
 ## Structure
 

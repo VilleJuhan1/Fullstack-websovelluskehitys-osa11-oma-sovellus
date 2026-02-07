@@ -8,7 +8,11 @@ const port = process.env.PORT || 3001;
 const RESTCOUNTRIES_BASE =
   "https://studies.cs.helsinki.fi/restcountries/api";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const frontendDist = path.resolve(__dirname, "../../frontend/dist");
+const frontendDistCandidates = [
+  path.resolve(process.cwd(), "apps/frontend/dist"),
+  path.resolve(__dirname, "../../frontend/dist")
+];
+const frontendDist = frontendDistCandidates.find((dir) => fs.existsSync(dir));
 
 async function fetchJson(url) {
   const response = await fetch(url);
@@ -61,11 +65,16 @@ app.get("/api/countries/:name", async (req, res) => {
 });
 
 // Serve the built frontend when running the single-service deployment.
-if (fs.existsSync(frontendDist)) {
+if (frontendDist) {
+  console.log(`Serving frontend from ${frontendDist}`);
   app.use(express.static(frontendDist));
   app.get("*", (req, res) => {
     res.sendFile(path.join(frontendDist, "index.html"));
   });
+} else {
+  console.warn(
+    "Frontend build not found. Run `npm run build` to create apps/frontend/dist."
+  );
 }
 
 app.listen(port, () => {
