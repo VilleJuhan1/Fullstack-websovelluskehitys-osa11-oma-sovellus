@@ -71,6 +71,7 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Remember to add read/write permissions for the GITHUB_TOKEN in the workflow settings to allow pushing tags
       - name: Bump version and push tag
         id: tag
         uses: anothrNick/github-tag-action@1.75.0
