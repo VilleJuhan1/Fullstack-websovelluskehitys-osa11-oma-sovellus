@@ -5,6 +5,8 @@ shows a flag and four options to guess the country.
 
 **The app is almost entirely coded with OpenAI Codex!** This is mainly because at the time, it was a brand new tool and I wanted to see how it works, if it works. The app is a very distant fork from the earlier parts of the course where we built a react app for searching information from various countries. The backend of this app uses the same API as that course app.
 
+You can test [the live game here](https://fullstack-websovelluskehitys-osa11-oma.onrender.com)!
+
 ## Structure
 
 - `apps/frontend` - React app

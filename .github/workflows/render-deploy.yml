@@ -3,10 +3,30 @@ name: Build, Test, Deploy (Render)
 on:
   push:
     branches: ["main"]
-  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    # - opened: Triggered when a pull request is opened
+    # - synchronize: Triggered when a pull request is updated with new commits (e.g., when changes are pushed to the PR branch)
+    types: [opened, synchronize]
 
 jobs:
-  build_test_deploy:
+  check_skip_condition:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.check_skip.outputs.skip }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Check for skip condition in the commit message
+      - name: Check for skip condition
+        id: check_skip
+        run: echo "skip=${{ contains(github.event.head_commit.message, '#skip') }}" >> $GITHUB_OUTPUT
+
+  build_and_test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -27,13 +47,81 @@ jobs:
       - name: Build app bundle
         run: npm run build
 
-      #- name: Deploy to Render
-      #  if: github.ref == 'refs/heads/main'
-      #  env:
-      #    RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
-      #  run: |
-      #    if [ -z "$RENDER_DEPLOY_HOOK" ]; then
-      #      echo "RENDER_DEPLOY_HOOK is not set"
-      #      exit 1
-      #    fi
-      #    curl -fsSL -X POST "$RENDER_DEPLOY_HOOK"
+  deploy_to_render:
+    needs: [check_skip_condition, build_and_test]
+    if: github.event_name == 'push' && needs.check_skip_condition.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Trigger deployment to Render.com
+        run: curl ${{ secrets.RENDER_DEPLOY_URL }}
+
+  # Tag a new release only if the app is deployed successfully via the pipeline
+  tag_release:
+    needs: [deploy_to_render]
+    runs-on: ubuntu-latest
+    outputs:
+      new_tag: ${{ steps.tag.outputs.new_tag }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Bump version and push tag
+        id: tag
+        uses: anothrNick/github-tag-action@1.75.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEFAULT_BUMP: patch
+
+  # Notify Discord of successful deployment only if everything succeeds and is not skipped
+  notify_release:
+    needs: [tag_release]
+    if: ${{ success() }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Notify on succesful deployment to Discord
+        uses: stegzilla/discord-notify@v2
+        with:
+          webhook_url: ${{ secrets.DISCORD_WEBHOOK }}
+          username: '${{ secrets.DISCORD_USERNAME }}'
+          title: New version deployed!
+          message: |
+            A new version of the Flag game has been deployed successfully.
+            Released version: ${{ needs.tag_release.outputs.new_tag }}
+            Test it out here: https://fullstack-websovelluskehitys-osa11-oma.onrender.com
+          colour: '#00FF00' # Green color for success
+
+  notify_failure:
+    needs: [build_and_test, deploy_to_render, tag_release]
+    if: failure()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Build a failure summary
+        id: failure_summary
+        run: |
+          FAILED_JOBS=""
+          [[ "${{ needs.build_and_test.result }}" == "failure" ]] && FAILED_JOBS+="build_and_test "
+          [[ "${{ needs.deploy_to_render.result }}" == "failure" ]] && FAILED_JOBS+="deploy_to_render "
+          [[ "${{ needs.tag_release.result }}" == "failure" ]] && FAILED_JOBS+="tag_release "
+          echo "failed_jobs=${FAILED_JOBS}" >> $GITHUB_OUTPUT
+          
+      - name: Notify on failed deployment to Discord
+        uses: stegzilla/discord-notify@v2
+        with:
+          webhook_url: ${{ secrets.DISCORD_WEBHOOK }}
+          username: '${{ secrets.DISCORD_USERNAME }}'
+          title: Deployment failed!
+          message: |
+            The following jobs failed:
+            ${{ steps.failure_summary.outputs.failed_jobs }}
+
+            View logs:
+            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          colour: '#FF0000'
