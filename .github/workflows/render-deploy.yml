@@ -1,7 +1,8 @@
-name: Build, Test, Deploy (Render)
+name: Build, test and deploy to Render.com
 
 on:
   push:
+    # Main branch is protected, so only merges from pull requests will trigger this.
     branches: ["main"]
   pull_request:
     branches: [main]
@@ -10,6 +11,8 @@ on:
     types: [opened, synchronize]
 
 jobs:
+  # If the commit message contains "#skip", it means the user wants to commit changes without deployment.
+  # This can be useful for documentation updates etc.
   check_skip_condition:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
@@ -26,6 +29,8 @@ jobs:
         id: check_skip
         run: echo "skip=${{ contains(github.event.head_commit.message, '#skip') }}" >> $GITHUB_OUTPUT
 
+  # Build and test the app on both push and pull requests
+  # This needs to succeed before a branch is allowed to be merged to main
   build_and_test:
     runs-on: ubuntu-latest
     steps:
@@ -47,6 +52,7 @@ jobs:
       - name: Build app bundle
         run: npm run build
 
+  # Deploy only if it's a push event (merge to main), skip condition is not met, and build/test jobs succeeded
   deploy_to_render:
     needs: [check_skip_condition, build_and_test]
     if: github.event_name == 'push' && needs.check_skip_condition.outputs.skip != 'true'
@@ -98,6 +104,9 @@ jobs:
             Test it out here: https://fullstack-websovelluskehitys-osa11-oma.onrender.com
           colour: '#00FF00' # Green color for success
 
+  # Notify Discord of failed deployment with details on which job(s) failed
+  # Only run this if skip condition is not met (i.e., the workflow was not intentionally skipped)
+  # If there are issues with build, test, deploy or tagging, this will provide a summary in the Discord notification
   notify_failure:
     needs: [check_skip_condition, build_and_test, deploy_to_render, tag_release]
     if: failure()
