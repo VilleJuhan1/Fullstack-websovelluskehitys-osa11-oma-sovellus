@@ -57,7 +57,7 @@ jobs:
           fetch-depth: 0
 
       - name: Trigger deployment to Render.com
-        run: curl ${{ secrets.RENDER_DEPLOY_URL }}
+        run: curl ${{ secrets.RENDER_DEPLOY_HOOK }}
 
   # Tag a new release only if the app is deployed successfully via the pipeline
   tag_release:
