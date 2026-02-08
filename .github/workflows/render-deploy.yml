@@ -99,7 +99,7 @@ jobs:
           colour: '#00FF00' # Green color for success
 
   notify_failure:
-    needs: [build_and_test, deploy_to_render, tag_release]
+    needs: [check_skip_condition, build_and_test, deploy_to_render, tag_release]
     if: failure()
     runs-on: ubuntu-latest
 
